@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import { ApolloServer, AuthenticationError } from 'apollo-server-express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
 
 import mongoose from 'mongoose';
 
@@ -18,6 +20,17 @@ const expiresInSeconds = 24 * 60 * 60;
 dotenv.config();
 
 const app = express();
+
+app.use(bodyParser.urlencoded({ extended: false }));
+
+app.use(bodyParser.json());
+
+app.use(
+  cors({
+    origin: 'http://localhost:3000',
+    optionsSuccessStatus: 200,
+  })
+);
 
 app.set('secretKey', process.env.SECRET_KEY);
 
@@ -41,9 +54,7 @@ app.post('/login', (request, response) => {
         const accessToken = jwt.sign({ id: user._id }, app.get('secretKey'), {
           expiresIn: expiresInSeconds,
         });
-        response
-          .status(200)
-          .send({ access_token: accessToken, expiresInSeconds });
+        response.status(200).send({ accessToken, expiresInSeconds });
       }
       if (!valid)
         response
@@ -51,7 +62,6 @@ app.post('/login', (request, response) => {
           .send(`Incorrect username or password. Error: ${error}`);
     });
   });
-  response.status(200).send({ access_token: '' });
 });
 
 app.post('/register', (request, response) => {
@@ -70,15 +80,22 @@ app.post('/register', (request, response) => {
         response
           .status(500)
           .send({ message: `Failed to create new User. Error: ${error}` });
-
       const accessToken = jwt.sign({ id: newUser._id }, app.get('secretKey'), {
         expiresIn: expiresInSeconds,
       });
-      response
-        .status(200)
-        .send({ access_token: accessToken, expiresInSeconds });
+      response.status(200).send({ accessToken, expiresInSeconds });
     }
   );
+});
+
+app.get('/checkAuth', (request, response) => {
+  const token = request.headers.authorization.split(' ')[1] || '';
+  try {
+    jwt.verify(token, app.get('secretKey'));
+    return response.status(200).send({ isLoggedIn: true });
+  } catch (error) {
+    return response.status(200).send({ isLoggedIn: false });
+  }
 });
 
 const server = new ApolloServer({
@@ -88,22 +105,22 @@ const server = new ApolloServer({
   introspection: true,
   tracing: true,
   path: '/',
-  // context: ({ req, res }) => {
-  //   const token = req.headers.authorization || '';
+  context: ({ req, res }) => {
+    const token = req.headers.authorization || '';
 
-  //   let user;
+    let user;
 
-  //   try {
-  //     const decoded = jwt.verify(token, app.get('secretKey'));
-  //     user = User.findById(decoded.id);
-  //   } catch (error) {
-  //     return res.redirect('/login');
-  //   }
+    try {
+      const decoded = jwt.verify(token, app.get('secretKey'));
+      user = User.findById(decoded.id);
+    } catch (error) {
+      return res.redirect('/login');
+    }
 
-  //   if (!user) throw new AuthenticationError('You must be logged in');
+    if (!user) throw new AuthenticationError('You must be logged in');
 
-  //   return { user };
-  // },
+    return { user };
+  },
 });
 
 server.applyMiddleware({

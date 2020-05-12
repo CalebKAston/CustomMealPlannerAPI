@@ -3,6 +3,7 @@ import timestamps from 'mongoose-timestamp';
 import { composeWithMongoose } from 'graphql-compose-mongoose';
 import { RecipeSchema } from './recipe';
 import { SchedulePiecesSchema } from './schedule-piece';
+import { TagSchema } from './tag';
 
 export const MealSchema = new Schema({
   name: {
@@ -16,6 +17,10 @@ export const MealSchema = new Schema({
   },
   schedulePieces: {
     type: [SchedulePiecesSchema],
+    required: false,
+  },
+  tags: {
+    type: [TagSchema],
     required: false,
   },
 });

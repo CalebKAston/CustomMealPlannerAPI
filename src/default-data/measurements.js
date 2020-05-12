@@ -1,7 +1,7 @@
 export const defaultMeasurements = [
   {
     name: 'Unit',
-    display: '',
+    display: 'unit',
     weightOunces: null,
     fluidOunces: null,
   },
